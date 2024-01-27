@@ -7,6 +7,6 @@ on:
 
 jobs:
   release:
-    uses: EventHubConnect/github-workflows/.github/workflows/semantic_release.yml@master
+    uses: EventHubConnect/github-workflows/.github/workflows/semantic_release.yml@main
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
