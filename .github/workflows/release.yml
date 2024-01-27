@@ -1,0 +1,12 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  release:
+    uses: EventHubConnect/github-workflows/.github/workflows/semantic_release.yml@master
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}

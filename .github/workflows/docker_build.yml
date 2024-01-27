@@ -1,0 +1,96 @@
+name: Docker Build
+
+on:
+  workflow_call:
+    outputs:
+      image_name:
+        description: "Docker image name built"
+        value: ${{ jobs.build.outputs.image_name }}
+      tag_name:
+        description: "Docker tag built"
+        value: ${{ jobs.build.outputs.tag_name }}
+      tags:
+        description: "Docker tags built"
+        value: ${{ jobs.build.outputs.tags }}
+    inputs:
+      username:
+        required: true
+        type: string
+      registry:
+        required: true
+        type: string
+      image:
+        required: true
+        type: string
+      tag_prefix:
+        required: false
+        type: string
+      context:
+        required: false
+        type: string
+        default: '.'
+    secrets:
+      token:
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    concurrency: 
+      group: ${{ github.workflow }}-${{ inputs.image}}-${{ github.ref }}
+      cancel-in-progress: true
+    outputs:
+      image_name: ${{ steps.split.outputs._0 }}
+      tag_name: ${{ steps.split.outputs._1 }}
+      tags: ${{ steps.docker_metadata.outputs.tags }}
+
+    steps:
+      - id: tolower_image
+        uses: ASzc/change-string-case-action@v5
+        with:
+          string: ${{ inputs.image }}
+
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: docker - login
+        id: docker_login
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ inputs.username }}
+          password: ${{ secrets.token }}
+
+      - name: docker - extract metadata
+        id: docker_metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ inputs.registry }}/${{ steps.tolower_image.outputs.lowercase }}
+          flavor: |
+            latest=false
+            prefix=${{ inputs.tag_prefix }}-
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and cache
+        uses: docker/build-push-action@v3
+        with:
+          context: ${{ inputs.context }}
+          push: true
+          tags: ${{ steps.docker_metadata.outputs.tags }}
+          labels: ${{ steps.docker_metadata.outputs.labels }}
+          cache-from: |
+            type=registry,ref=${{ steps.docker_metadata.outputs.tags }}-cache
+            type=registry,ref=${{ inputs.registry }}/${{ steps.tolower_image.outputs.lowercase }}:${{ github.event.repository.default_branch }}
+          cache-to: type=registry,mode=max,ref=${{ steps.docker_metadata.outputs.tags }}-cache
+
+      - uses: jungwinter/split@v2
+        id: split
+        with:
+          msg: ${{ steps.docker_metadata.outputs.tags }}
+          separator: ":"
