@@ -64,7 +64,7 @@ jobs:
           password: ${{ secrets.token }}
 
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.2.0
 
       - name: base64-to-file - KUBECONFIG
         id: kubeconfig
